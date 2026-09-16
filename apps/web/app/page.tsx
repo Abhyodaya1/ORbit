@@ -2,15 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { Sparkles, Gamepad2, Video, Heart } from "lucide-react";
+import { Sparkles, Gamepad2, Video, Heart, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
   const [isConnected, setIsConnected] = useState(false);
   const [socketId, setSocketId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
-    const socket: Socket = io("http://localhost:4000");
-
+   
+    const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
+    const socket: Socket = io(`http://${host}:4000`);
+    
     socket.on("connect", () => {
       setIsConnected(true);
       setSocketId(socket.id || null);
@@ -25,6 +30,31 @@ export default function Home() {
       socket.disconnect();
     };
   }, []);
+
+  // Handle Room Creation
+  const handleCreateRoom = async () => {
+    try {
+      setIsCreating(true);
+      const res = await fetch("/api/invite", { method: "POST" });
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to create room");
+      }
+
+      // Store the stable hostToken in this browser's localStorage
+      localStorage.setItem(`orbit_token_${data.code}`, data.hostToken);
+      localStorage.setItem(`orbit_role_${data.code}`, "HOST");
+
+      // Redirect host to their private room!
+      router.push(`/room/${data.code}`);
+    } catch (err) {
+      console.error(err);
+      alert("Could not create room. Please check your database connection!");
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
     <main className="min-h-screen arcade-grid-bg flex flex-col items-center justify-center p-6">
@@ -72,7 +102,7 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="bg-white border-2 border-orbit-border rounded-boxy p-3 flex items-center gap-2.5 shadow-arcadeSm">
             <Video className="w-5 h-5 text-orbit-accent" />
-            <span className="text-xs font-semibold">1:1 Video Call</span>
+            <span className="text-xs font-semibold">1:1 WebRTC Video</span>
           </div>
           <div className="bg-white border-2 border-orbit-border rounded-boxy p-3 flex items-center gap-2.5 shadow-arcadeSm">
             <Heart className="w-5 h-5 text-orbit-coral" />
@@ -81,8 +111,19 @@ export default function Home() {
         </div>
 
         {/* Action Button */}
-        <button className="w-full py-3.5 px-4 bg-orbit-accent hover:bg-violet-600 text-white font-pixel text-sm tracking-wider rounded-boxy border-2 border-orbit-border shadow-arcade hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-arcadeSm active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all">
-          CREATE PRIVATE ROOM
+        <button
+          onClick={handleCreateRoom}
+          disabled={isCreating}
+          className="w-full py-3.5 px-4 bg-orbit-accent hover:bg-violet-600 disabled:opacity-50 text-white font-pixel text-sm tracking-wider rounded-boxy border-2 border-orbit-border shadow-arcade hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-arcadeSm active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all flex items-center justify-center gap-2"
+        >
+          {isCreating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>GENERATING ROOM...</span>
+            </>
+          ) : (
+            <span>CREATE PRIVATE ROOM</span>
+          )}
         </button>
       </div>
     </main>
