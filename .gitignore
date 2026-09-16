@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Environment Variables (Never commit passwords/secrets!)
+.env
+.env*.local
+*.env
+
+# Next.js Build Output
+.next/
+out/
+
+# TypeScript / Build Artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/

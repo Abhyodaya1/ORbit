@@ -1,0 +1,68 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Room {
+  id           String        @id @default(uuid())
+  code         String        @unique 
+  hostToken    String        @unique 
+  peerToken    String?       @unique 
+  status       RoomStatus    @default(WAITING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  messages     Message[]
+  gameSessions GameSession[]
+
+  @@index([code])
+}
+
+enum RoomStatus {
+  WAITING
+  ACTIVE
+  CLOSED
+}
+
+model GameSession {
+  id        String    @id @default(uuid())
+  roomId    String
+  room      Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  gameType  GameType
+  winnerRole String?  // "HOST" | "PEER" | "DRAW"
+  scores    Json?     // e.g. { host: 5, peer: 3 }
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  @@index([roomId])
+}
+
+enum GameType {
+  HIGHER_LOWER
+  DRAW_GUESS
+  CELEBRITY_GUESS
+  ROCK_PAPER_SCISSORS
+  PONG
+}
+
+model Celebrity {
+  id       String   @id @default(uuid())
+  name     String
+  imageUrl String
+  category String?  // "Actors", "Tech", "Musicians", "Athletes"
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderRole  String   // "HOST" or "PEER"
+  senderName  String   // Display name
+  text        String
+  createdAt   DateTime @default(now())
+
+  @@index([roomId])
+}
