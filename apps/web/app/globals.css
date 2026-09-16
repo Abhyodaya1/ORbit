@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: #f4f3fb;
+  color: #221c38;
+  overflow-x: hidden;
+}
+
+/* Custom retro scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #edeaf8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2d264f;
+  border-radius: 4px;
+}
+
+/* Subtle arcade grid background pattern */
+.arcade-grid-bg {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, rgba(45, 38, 79, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(45, 38, 79, 0.05) 1px, transparent 1px);
+}
