@@ -18,6 +18,7 @@ export class HigherLowerGame {
   private state: HigherLowerState;
   private hostToken: string;
   private peerToken: string;
+  private scores: { HOST: number; PEER: number } = { HOST: 0, PEER: 0 };
 
   constructor(hostToken: string, peerToken: string) {
     this.hostToken = hostToken;
@@ -72,6 +73,7 @@ export class HigherLowerGame {
       result = "CORRECT";
       this.state.winner = playerRole;
       this.state.status = "FINISHED";
+      this.scores[playerRole] += 1; // Award point to winner
     }
 
     // 3. Record guess in history log
@@ -97,6 +99,7 @@ export class HigherLowerGame {
       winner: this.state.winner,
       history: this.state.history,
       status: this.state.status,
+      scores: this.scores,
       // Only reveal partner's secret once the match is over!
       partnerSecretNumber:
         this.state.status === "FINISHED"

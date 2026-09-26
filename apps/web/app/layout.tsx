@@ -22,7 +22,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-orbit-bg text-orbit-text min-h-screen font-sans antialiased selection:bg-orbit-accent selection:text-white">
+      <body 
+      suppressHydrationWarning
+      className="bg-orbit-bg text-orbit-text min-h-screen font-sans antialiased selection:bg-orbit-accent selection:text-white">
         {children}
       </body>
     </html>

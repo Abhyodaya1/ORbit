@@ -55,7 +55,10 @@ export default function RoomPage() {
 
         // 2. Connect to Socket.IO Signaling Server
         const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
-        const socketInstance: Socket = io(`http://${host}:4000`);
+        const socketInstance: Socket = io(`http://${host}:4000`, {
+          transports: ["websocket"],
+          reconnectionDelay: 500,
+        });
         setSocket(socketInstance);
 
         socketInstance.on("connect", () => {
@@ -103,11 +106,7 @@ export default function RoomPage() {
     isPeerConnected,
   });
 
-const fullInviteUrl = `${window.location.origin}/room/${roomId}`;
-navigator.clipboard.writeText(fullInviteUrl);
 
-  // Copy Invite Link to Clipboard
-   // Copy the complete clickable invite link to clipboard
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
       const fullInviteUrl = `${window.location.origin}/room/${roomId}`;
@@ -160,13 +159,6 @@ navigator.clipboard.writeText(fullInviteUrl);
 
         {/* Room Code Badge & Copy Link Button */}
         <div className="flex items-center gap-2">
-          <div className="bg-white border-2 border-orbit-border px-3 py-1 rounded-boxy shadow-arcadeSm flex items-center gap-2">
-            <span className="font-pixel text-[10px] text-orbit-muted">ROOM:</span>
-            <span className="font-pixel text-xs font-bold text-orbit-accent">
-              {roomId}
-            </span>
-          </div>
-
                  {/* Room Code Badge & Copy Link Button */}
         <div className="flex items-center gap-2">
           <button

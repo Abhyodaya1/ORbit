@@ -1,5 +1,6 @@
 import { prisma } from "@orbit/db";
 import { HigherLowerGame } from "./games/higherlower";
+import { DrawGuessGame } from "./games/drawGuess";
 
 interface Participant {
     token: string;
@@ -14,6 +15,7 @@ interface ActiveRoom {
   peer?: Participant;
   selectedGame: string;
   currentGame?: HigherLowerGame;
+  currentDrawGame?: DrawGuessGame;
   disconnectTimers: Map<string, NodeJS.Timeout>; // token -> timeout
 }
 
@@ -133,16 +135,26 @@ const room = this.rooms.get(roomCode);
   if (gameType === "HIGHER_LOWER") {
     room.currentGame = new HigherLowerGame(room.host.token, room.peer.token);
   }
+
+  if (gameType === "DRAW_GUESS") {
+    room.currentDrawGame = new DrawGuessGame(room.host.token, room.peer.token);
+  }
   return { success: true, room };
 }
 
-handleGameAction(roomCode: string, token: string, action: { type: string; guess?: number }) {
+handleGameAction(roomCode: string, token: string, action: { type: string; guess?: number | string }) {
   const room = this.rooms.get(roomCode);
-  if (!room || !room.currentGame) {
+  if (!room ) {
     return { error: "No active game in this room!" };
   }
-  if (action.type === "GUESS" && typeof action.guess === "number") {
-    return room.currentGame.handleGuess(token, action.guess);
+  if(room.selectedGame === "DRAW_GUESS" && room.currentDrawGame) {
+    if (action.type === "GUESS" && action.guess !== undefined) {
+      return room.currentDrawGame.handleGuess(token, String(action.guess));
+    }
+  } else if (room.selectedGame === "HIGHER_LOWER" && room.currentGame) {
+    if (action.type === "GUESS" && action.guess !== undefined) {
+      return room.currentGame.handleGuess(token, Number(action.guess));
+    }
   }
   return { error: "Unknown action" };
 }
@@ -150,6 +162,10 @@ handleGameAction(roomCode: string, token: string, action: { type: string; guess?
 getGameState(roomCode: string, token: string) {
   const room = this.rooms.get(roomCode);
   if (!room || !room.currentGame) return null;
+
+  if (room.selectedGame === "DRAW_GUESS" && room.currentDrawGame) {
+    return room.currentDrawGame.getStateForPlayer(token);
+  }
   return room.currentGame.getStateForPlayer(token);
 }
 // Get room details

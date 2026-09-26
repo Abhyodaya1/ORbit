@@ -35,6 +35,12 @@ export function usewebRTC({ socket, roomCode, isHost, isPeerConnected }: UseWebR
 
     async function startCamera(){
         try{
+
+           if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+          console.warn("⚠️ Camera access requires http://localhost or HTTPS!");
+          return;
+        }
+        
              const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
           audio: true,
