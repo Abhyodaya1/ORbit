@@ -63,6 +63,36 @@ io.on('connection', (socket) => {
     socket.to(roomCode).emit("webrtc_ice_candidate", { candidate });
   });
 
+  io.on("start_game", ({ roomCode, gameType }) => {
+    const result = roomManager.startGame(roomCode, gameType);
+     if (result.error) {
+      socket.emit('game_error', { message: result.error });
+      return;
+    }
+
+    const room = roomManager.getRoom(roomCode);
+    if (!room || !room.host || !room.peer) return;
+      io.to(room.host.socketId).emit ("game_state_update", roomManager.getGameState(roomCode, room.host.token));
+      io.to(room.peer.socketId).emit ("game_state_update", roomManager.getGameState(roomCode, room.peer.token));
+
+      socket.on("game_action" , ({ roomCode, token, action }) => {
+        console.log(`🎮 [Game Action] ${token} in ${roomCode} performed action:`, action);
+
+        const result = roomManager.handleGameAction(roomCode, token, action);
+        if (result.error) {
+          socket.emit('game_error', { message: result.error });
+          return;
+        }
+
+        const room = roomManager.getRoom(roomCode);
+        if (!room || !room.host || !room.peer) return;
+
+           io.to(room.host.socketId).emit('game_state_update', roomManager.getGameState(roomCode, room.host.token));
+    io.to(room.peer.socketId).emit('game_state_update', roomManager.getGameState(roomCode, room.peer.token));
+  });
+
+  });
+
   socket.on('disconnect', () => {
     const result = roomManager.handleDisconnect(socket.id);
     if (result) {

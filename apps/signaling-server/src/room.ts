@@ -1,4 +1,5 @@
 import { prisma } from "@orbit/db";
+import { HigherLowerGame } from "./games/higherlower";
 
 interface Participant {
     token: string;
@@ -12,6 +13,7 @@ interface ActiveRoom {
   host?: Participant;
   peer?: Participant;
   selectedGame: string;
+  currentGame?: HigherLowerGame;
   disconnectTimers: Map<string, NodeJS.Timeout>; // token -> timeout
 }
 
@@ -120,4 +122,38 @@ export class RoomManager {
     const target = myRole === "HOST" ? room.peer : room.host;
     return target?.connected ? target.socketId : null;
   }
+
+  startGame(roomCode: string , gameType: string) {
+const room = this.rooms.get(roomCode);
+    if (!room || !room.host || !room.peer) {
+    return { error: "Both players must be in the room to start!" };
+  }
+
+ room.selectedGame = gameType;
+  if (gameType === "HIGHER_LOWER") {
+    room.currentGame = new HigherLowerGame(room.host.token, room.peer.token);
+  }
+  return { success: true, room };
 }
+
+handleGameAction(roomCode: string, token: string, action: { type: string; guess?: number }) {
+  const room = this.rooms.get(roomCode);
+  if (!room || !room.currentGame) {
+    return { error: "No active game in this room!" };
+  }
+  if (action.type === "GUESS" && typeof action.guess === "number") {
+    return room.currentGame.handleGuess(token, action.guess);
+  }
+  return { error: "Unknown action" };
+}
+// Get masked state for a specific player
+getGameState(roomCode: string, token: string) {
+  const room = this.rooms.get(roomCode);
+  if (!room || !room.currentGame) return null;
+  return room.currentGame.getStateForPlayer(token);
+}
+// Get room details
+getRoom(roomCode: string) {
+  return this.rooms.get(roomCode);
+}
+  }

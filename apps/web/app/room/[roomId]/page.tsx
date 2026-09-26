@@ -237,7 +237,11 @@ navigator.clipboard.writeText(fullInviteUrl);
 
         {/* Right Column: Arcade Game Arena */}
         <section className="flex-1 flex flex-col min-h-0">
-          <GamePanel />
+          <GamePanel
+          socket={socket}
+          roomCode={roomId}
+          token={token}
+          role={role} />
         </section>
       </div>
 
