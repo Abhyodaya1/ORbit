@@ -50,10 +50,164 @@ body {
 .animate-float-up {
   animation: float-up 2.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
+
 /* Subtle arcade grid background pattern */
 .arcade-grid-bg {
   background-size: 24px 24px;
   background-image: 
     linear-gradient(to right, rgba(45, 38, 79, 0.05) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(45, 38, 79, 0.05) 1px, transparent 1px);
+}
+
+/* Cosmic Dreamy Pastel Animations */
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(3deg);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(14px) rotate(-3deg);
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes shooting-star {
+  0% {
+    transform: translateX(0) translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  40% {
+    transform: translateX(350px) translateY(200px) scale(1.2);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(350px) translateY(200px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 7s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+.animate-shooting-star {
+  animation: shooting-star 9s linear infinite;
+}
+
+/* ── Arcade Arena Multiple Shooting Stars ── */
+@keyframes arena-streak-medium {
+  0% {
+    transform: translateX(0) scale(0.6);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  45% {
+    transform: translateX(360px) scale(1.1);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(360px) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes arena-streak-long {
+  0% {
+    transform: translateX(0) scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  42% {
+    transform: translateX(450px) scale(1.2);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(450px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes arena-streak-short {
+  0% {
+    transform: translateX(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  48% {
+    transform: translateX(260px) scale(1);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(260px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes arena-streak-fast {
+  0% {
+    transform: translateX(0) scale(0.5);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  35% {
+    transform: translateX(380px) scale(1.15);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(380px) scale(1.15);
+    opacity: 0;
+  }
+}
+
+.animate-arena-streak-medium {
+  animation: arena-streak-medium 4.8s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+.animate-arena-streak-long {
+  animation: arena-streak-long 6.4s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+.animate-arena-streak-short {
+  animation: arena-streak-short 5.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+.animate-arena-streak-fast {
+  animation: arena-streak-fast 3.6s cubic-bezier(0.25, 1, 0.5, 1) infinite;
 }

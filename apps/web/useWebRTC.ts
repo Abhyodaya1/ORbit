@@ -177,8 +177,7 @@ export function usewebRTC({ socket, roomCode, isHost, isPeerConnected }: UseWebR
       const pc = createPeerConnection();
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-
-      socket.emit("webrtc_offer", { roomCode, sdp: offer });
+      socket?.emit("webrtc_offer", { roomCode, sdp: offer });
     }
 
     callPeer();

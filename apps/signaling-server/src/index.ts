@@ -124,10 +124,10 @@ io.on('connection', (socket) => {
     io.to(room.peer.socketId).emit('game_state_update', roomManager.getGameState(roomCode, room.peer.token));
   });
 
-  socket.on("send_reaction" , ({ roomCode, emoji }) => {
-     io.to(roomCode).emit('emoji_reaction', {
+  socket.on("send_reaction", ({ roomCode, emoji }) => {
+    io.to(roomCode).emit('emoji_reaction', {
       emoji,
-      id: `${Date.now()}_${Math.random()}`,
+      id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     });
   });
 

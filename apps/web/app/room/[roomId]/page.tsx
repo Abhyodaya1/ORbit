@@ -33,6 +33,9 @@ export default function RoomPage() {
 
   // 1. Authenticate & Join the Room via our API
   useEffect(() => {
+    let isCancelled = false;
+    let socketInstance: Socket | null = null;
+
     async function initRoom() {
       try {
         const storedToken = localStorage.getItem(`orbit_token_${roomId}`);
@@ -46,6 +49,8 @@ export default function RoomPage() {
 
         const data = await res.json();
 
+        if (isCancelled) return;
+
         if (!data.success) {
           setErrorMessage(data.error || "Unable to join room");
           return;
@@ -58,15 +63,21 @@ export default function RoomPage() {
 
         // 2. Connect to Socket.IO Signaling Server
         const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
-        const socketInstance: Socket = io(`http://${host}:4000`, {
+        socketInstance = io(`http://${host}:4000`, {
           transports: ["websocket"],
           reconnectionDelay: 500,
         });
+
+        if (isCancelled) {
+          socketInstance.disconnect();
+          return;
+        }
+
         setSocket(socketInstance);
 
         socketInstance.on("connect", () => {
           console.log(`🔌 Connected to signaling server, joining room: ${roomId}`);
-          socketInstance.emit("join_room", {
+          socketInstance?.emit("join_room", {
             roomCode: roomId,
             token: data.token,
           });
@@ -78,27 +89,36 @@ export default function RoomPage() {
           setPresence(updatedPresence);
         });
 
-                // Real-time floating emoji listener
+        // Real-time floating emoji listener with guaranteed unique React keys
         socketInstance.on("emoji_reaction", ({ emoji, id }) => {
+          const uniqueId = `${id || Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
           const randomLeft = Math.floor(Math.random() * 70) + 15; // 15% to 85% of screen width
-          setReactions((prev) => [...prev, { id, emoji, left: randomLeft }]);
+
+          setReactions((prev) => {
+            if (prev.some((r) => r.id === uniqueId)) return prev;
+            return [...prev, { id: uniqueId, emoji, left: randomLeft }];
+          });
 
           // Auto garbage-collect after 2.2s animation finishes
           setTimeout(() => {
-            setReactions((prev) => prev.filter((r) => r.id !== id));
+            setReactions((prev) => prev.filter((r) => r.id !== uniqueId));
           }, 2200);
         });
-
-        return () => {
-          socketInstance.disconnect();
-        };
       } catch (err) {
+        if (isCancelled) return;
         console.error("Room init failed:", err);
         setErrorMessage("Network error connecting to room");
       }
     }
 
     initRoom();
+
+    return () => {
+      isCancelled = true;
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
+    };
   }, [roomId]);
 
   // Is our partner currently in the room?
@@ -155,15 +175,19 @@ export default function RoomPage() {
   }
 
   return (
-    <main className="h-screen max-h-screen w-full arcade-grid-bg flex flex-col p-2.5 sm:p-4 md:p-6 overflow-hidden">
-      
-      {/* Top Header Bar */}
-      <header className="flex items-center justify-between pb-3 flex-shrink-0">
-        <div className="flex items-center gap-3">
+    <main className="min-h-screen lg:h-screen lg:max-h-screen w-full arcade-grid-bg flex flex-col p-2.5 sm:p-3 md:p-4 overflow-y-auto lg:overflow-hidden">
+      {/* ── Top Header Bar ── */}
+      <header className="flex items-center justify-between pb-2.5 sm:pb-3 flex-shrink-0">
+        <div className="flex items-center gap-2.5">
           <Link
             href="/"
-            className="p-1.5 bg-orbit-surface border-2 border-orbit-border rounded-boxy shadow-arcadeSm hover:bg-orbit-subsurface transition-colors"
-            title="Back to Lobby"
+            onClick={(e) => {
+              if (!window.confirm("Leave Orbit room and return to lobby?")) {
+                e.preventDefault();
+              }
+            }}
+            className="p-1.5 bg-orbit-surface border-2 border-orbit-border rounded-boxy shadow-arcadeSm hover:bg-orbit-subsurface active:translate-x-[1px] active:translate-y-[1px] transition-all"
+            title="Leave Room"
           >
             <ArrowLeft className="w-4 h-4 text-orbit-text" />
           </Link>
@@ -171,51 +195,47 @@ export default function RoomPage() {
             <h1 className="font-pixel text-base font-bold text-orbit-text">
               ORBIT
             </h1>
-            <Sparkles className="w-4 h-4 text-orbit-accent" />
+            <Sparkles className="w-4 h-4 text-orbit-accent animate-pulse" />
           </div>
         </div>
 
         {/* Room Code Badge & Copy Link Button */}
         <div className="flex items-center gap-2">
-                 {/* Room Code Badge & Copy Link Button */}
-        <div className="flex items-center gap-2">
           <button
             onClick={handleCopyLink}
-            className="bg-white hover:bg-orbit-subsurface border-2 border-orbit-border px-3 py-1 rounded-boxy shadow-arcadeSm flex items-center gap-2 active:translate-x-[1px] active:translate-y-[1px] transition-all"
+            className="bg-white hover:bg-orbit-subsurface border-2 border-orbit-border px-2.5 sm:px-3 py-1 rounded-boxy shadow-arcadeSm flex items-center gap-1.5 active:translate-x-[1px] active:translate-y-[1px] transition-all"
             title="Click to copy full invite link"
           >
-            <span className="font-pixel text-[10px] text-orbit-muted">ROOM:</span>
-            <span className="font-pixel text-xs font-bold text-orbit-accent">
+            <span className="font-pixel text-[9px] sm:text-[10px] text-orbit-muted">ROOM:</span>
+            <span className="font-pixel text-[11px] sm:text-xs font-bold text-orbit-accent">
               {roomId}
             </span>
           </button>
 
           <button
             onClick={handleCopyLink}
-            className="bg-orbit-surface hover:bg-orbit-subsurface border-2 border-orbit-border p-1.5 rounded-boxy shadow-arcadeSm text-orbit-text active:translate-x-[1px] active:translate-y-[1px] transition-all flex items-center gap-1.5 text-xs font-semibold px-2.5"
+            className="bg-orbit-accent hover:bg-violet-600 text-white border-2 border-orbit-border p-1.5 sm:px-2.5 rounded-boxy shadow-arcadeSm active:translate-x-[1px] active:translate-y-[1px] transition-all flex items-center gap-1.5 text-xs font-semibold"
             title="Copy Full Invite Link"
           >
             {isCopied ? (
               <>
                 <Check className="w-3.5 h-3.5 text-orbit-mint" />
-                <span className="text-[10px] text-orbit-mint font-pixel">LINK COPIED!</span>
+                <span className="text-[10px] text-white font-pixel hidden sm:inline">COPIED!</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-pixel">COPY LINK</span>
+                <span className="text-[10px] text-white font-pixel hidden sm:inline">INVITE</span>
               </>
             )}
           </button>
         </div>
-        </div>
       </header>
 
-      {/* Main Responsive Grid/Flex Body */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-3 min-h-0 mb-3">
-        
-        {/* Left Column: Stacked Video Tiles */}
-        <section className="w-full lg:w-80 xl:w-96 flex flex-row lg:flex-col gap-3 flex-shrink-0 min-h-0">
+      {/* ── Main Responsive Body ── */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-2.5 sm:gap-3 min-h-0 mb-2.5 sm:mb-3">
+        {/* Left Column: Stacked Definite-Rectangle Video Tiles */}
+        <section className="w-full lg:w-72 xl:w-80 2xl:w-96 flex flex-row lg:flex-col gap-2.5 sm:gap-3 flex-shrink-0 min-h-0">
           {/* Local User Video (V1) */}
           <VideoTile
             label={role === "HOST" ? "HOST (YOU)" : "PEER (YOU)"}
@@ -240,7 +260,7 @@ export default function RoomPage() {
                   : "connecting"
                 : "disconnected"
             }
-             onCopyLink={handleCopyLink}
+            onCopyLink={handleCopyLink}
             isCopied={isCopied}
           />
         </section>
@@ -248,14 +268,15 @@ export default function RoomPage() {
         {/* Right Column: Arcade Game Arena */}
         <section className="flex-1 flex flex-col min-h-0">
           <GamePanel
-          socket={socket}
-          roomCode={roomId}
-          token={token}
-          role={role} />
+            socket={socket}
+            roomCode={roomId}
+            token={token}
+            role={role}
+          />
         </section>
       </div>
 
-      {/* Bottom Full-Width Bar: Emoji Strip + Chat Bar */}
+      {/* ── Bottom Full-Width Bar: Emoji Strip + Chat Bar ── */}
       <footer className="w-full flex flex-col gap-2 flex-shrink-0">
         <EmojiRow onSendEmoji={handleSendEmoji} />
         <ChatBar
@@ -265,6 +286,7 @@ export default function RoomPage() {
           role={role}
         />
       </footer>
+
       {/* 🎈 Global Floating Emoji Reaction Overlay */}
       <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
         {reactions.map((r) => (

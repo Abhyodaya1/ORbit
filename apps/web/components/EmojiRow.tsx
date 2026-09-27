@@ -35,8 +35,8 @@ export default function EmojiRow({ onSendEmoji }: EmojiRowProps) {
   };
 
   return (
-    <div className="relative flex items-center gap-2 py-1.5 px-3 bg-orbit-surface border-2 border-orbit-border rounded-boxy shadow-arcadeSm overflow-x-auto">
-      <span className="font-pixel text-[10px] text-orbit-muted tracking-wider hidden sm:inline">
+    <div className="relative flex items-center gap-2 py-1.5 px-3 bg-gradient-to-r from-[#fff1f7] via-[#fce7f3] to-[#fed7ea] border-2 border-orbit-border rounded-boxy shadow-arcadeSm overflow-x-auto">
+      <span className="font-pixel text-[10px] text-orbit-text font-bold tracking-wider hidden sm:inline">
         REACT:
       </span>
       <div className="flex items-center gap-2">
@@ -44,7 +44,7 @@ export default function EmojiRow({ onSendEmoji }: EmojiRowProps) {
           <button
             key={emoji}
             onClick={() => handleSendEmoji(emoji)}
-            className="text-lg hover:scale-125 active:scale-95 transition-transform p-1 rounded hover:bg-orbit-subsurface"
+            className="text-lg hover:scale-125 active:scale-95 transition-transform p-1 rounded hover:bg-white/80"
           >
             {emoji}
           </button>

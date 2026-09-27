@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma} from "@orbit/db"
-import { randomBytes , randomUUID } from "crypto";
+import { prisma } from "@orbit/db";
+import { randomBytes, randomUUID } from "crypto";
+
+export const dynamic = "force-dynamic";
 
 const VIBES = [
   "cozy",

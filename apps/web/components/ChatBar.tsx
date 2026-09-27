@@ -64,13 +64,22 @@ export default function ChatBar({ socket, roomCode, token, role }: ChatBarProps)
   };
 
   return (
-    <div className="flex flex-col bg-orbit-surface border-2 border-orbit-border rounded-boxy p-3 shadow-arcadeSm gap-2">
+    <div className="relative flex flex-col bg-gradient-to-br from-[#fff1f7] via-[#fce7f3] to-[#fed7ea] border-2 border-orbit-border rounded-boxy p-3 shadow-arcadeSm gap-2 overflow-hidden">
+      {/* Static Retro Pixel Dot Matrix Pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(#f472b6_1.2px,transparent_1.2px)] [background-size:18px_18px] opacity-30 pointer-events-none" />
+
+      {/* Subtle CRT Scanlines */}
+      <div className="absolute inset-0 scanlines opacity-10 pointer-events-none" />
+
       {/* Scrollable Message History */}
-      <div className="max-h-24 md:max-h-28 overflow-y-auto flex flex-col gap-1.5 pr-1">
+      <div className="relative z-10 max-h-24 md:max-h-28 overflow-y-auto flex flex-col gap-1.5 pr-1">
         {messages.length === 0 ? (
-          <p className="text-[11px] text-orbit-muted italic py-1">
-            No messages yet. Say hi to your partner! 💬
-          </p>
+          <div className="flex items-center gap-1.5 py-1 px-2.5 bg-white/75 backdrop-blur-sm rounded-boxy border border-orbit-borderMuted w-fit shadow-sm">
+            <span className="text-xs">💬</span>
+            <p className="text-[11px] text-orbit-muted font-medium italic">
+              No messages yet. Say hi to your partner!
+            </p>
+          </div>
         ) : (
           messages.map((msg) => {
             const isMe = msg.senderRole === role;
@@ -87,25 +96,25 @@ export default function ChatBar({ socket, roomCode, token, role }: ChatBarProps)
                 }`}
               >
                 {!isMe && (
-                  <span className="font-pixel text-[9px] text-orbit-muted uppercase">
+                  <span className="font-pixel text-[9px] text-orbit-text font-bold uppercase drop-shadow-sm">
                     PARTNER:
                   </span>
                 )}
                 <span
-                  className={`px-2.5 py-1 rounded-boxy border font-medium ${
+                  className={`px-3 py-1 rounded-boxy border-2 font-medium max-w-[80%] break-words ${
                     isMe
-                      ? "bg-orbit-accent text-white border-orbit-border shadow-sm"
-                      : "bg-white text-orbit-text border-orbit-borderMuted shadow-sm"
+                      ? "bg-orbit-accent text-white border-orbit-border shadow-arcadeSm"
+                      : "bg-white text-orbit-text border-orbit-border shadow-arcadeSm"
                   }`}
                 >
                   {msg.text}
                 </span>
                 {isMe && (
-                  <span className="font-pixel text-[9px] text-orbit-muted uppercase">
+                  <span className="font-pixel text-[9px] text-orbit-text font-bold uppercase drop-shadow-sm">
                     YOU
                   </span>
                 )}
-                <span className="text-[9px] text-orbit-muted opacity-80">
+                <span className="text-[9px] text-orbit-muted opacity-80 font-mono">
                   {timeString}
                 </span>
               </div>
@@ -116,18 +125,18 @@ export default function ChatBar({ socket, roomCode, token, role }: ChatBarProps)
       </div>
 
       {/* Chat Input Row */}
-      <form onSubmit={handleSend} className="flex items-center gap-2">
+      <form onSubmit={handleSend} className="relative z-10 flex items-center gap-2">
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder="Send a cozy message..."
-          className="flex-1 bg-orbit-subsurface border-2 border-orbit-border rounded-boxy px-3 py-1.5 text-xs text-orbit-text focus:outline-none focus:border-orbit-accent font-medium transition-colors"
+          className="flex-1 bg-white/95 border-2 border-orbit-border rounded-boxy px-3 py-1.5 text-xs text-orbit-text placeholder:text-orbit-muted focus:outline-none focus:ring-2 focus:ring-orbit-accent/40 font-medium transition-colors shadow-inner"
         />
         <button
           type="submit"
           disabled={!inputText.trim()}
-          className="bg-orbit-accent hover:bg-violet-600 disabled:opacity-50 text-white p-2 rounded-boxy border-2 border-orbit-border shadow-arcadeSm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+          className="bg-orbit-accent hover:bg-violet-600 disabled:opacity-50 text-white p-2 rounded-boxy border-2 border-orbit-border shadow-arcadeSm hover:translate-x-[1px] hover:translate-y-[1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex-shrink-0"
         >
           <Send className="w-3.5 h-3.5" />
         </button>

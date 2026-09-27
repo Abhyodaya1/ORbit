@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
 import { Gamepad2, RotateCcw, Trash2, Send, Check, ArrowUp, ArrowDown, HelpCircle } from "lucide-react";
+import ArcadeShootingStars from "./ArcadeShootingStars";
 
 interface GamePanelProps {
   socket: Socket | null;
@@ -334,11 +335,14 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
       </div>
 
       {/* ── Main Arena Canvas ── */}
-      <div className="flex-1 flex flex-col p-4 overflow-y-auto min-h-0 bg-white relative">
+      <div className="flex-1 flex flex-col p-4 overflow-y-auto min-h-0 relative">
+        {/* Baby Pink Background with Multiple Arcade Shooting Stars ONLY */}
+        <ArcadeShootingStars />
+
         {/* LOBBY VIEW */}
         {!gameState && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
-            <div className="border-2 border-dashed border-orbit-borderMuted rounded-boxy p-8 max-w-sm w-full flex flex-col items-center gap-3 shadow-arcadeSm">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 relative z-10">
+            <div className="bg-white/95 backdrop-blur-sm border-2 border-orbit-border rounded-boxy p-8 max-w-sm w-full flex flex-col items-center gap-3 shadow-arcade">
               <span className="text-5xl animate-bounce">
                 {AVAILABLE_GAMES.find((g) => g.id === selectedGame)?.icon}
               </span>
@@ -350,7 +354,7 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
               </p>
               <button
                 onClick={() => handleStartGame(selectedGame)}
-                className="mt-2 py-3 px-6 bg-orbit-mint hover:bg-emerald-600 text-white font-pixel text-xs tracking-wider rounded-boxy border-2 border-orbit-border shadow-arcade active:translate-x-[2px] active:translate-y-[2px] transition-all"
+                className="mt-2 py-3 px-6 bg-orbit-mint hover:bg-emerald-600 text-white font-pixel text-xs tracking-wider rounded-boxy border-2 border-orbit-border shadow-arcade hover:translate-x-[1px] hover:translate-y-[1px] active:translate-x-[2px] active:translate-y-[2px] transition-all"
               >
                 START GAME
               </button>
@@ -360,7 +364,7 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
 
         {/* ════ GAME 1: HIGHER OR LOWER ════ */}
         {selectedGame === "HIGHER_LOWER" && gameState?.gameType === "HIGHER_LOWER" && (
-          <div className="flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full">
+          <div className="flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full relative z-10">
             <div className="bg-orbit-subsurface border-2 border-orbit-border rounded-boxy p-3 flex items-center justify-between shadow-arcadeSm">
               <div>
                 <span className="text-[10px] font-pixel text-orbit-muted uppercase">Your Target:</span>
@@ -458,7 +462,7 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
 
         {/* ════ GAME 2: DRAW & GUESS ════ */}
         {selectedGame === "DRAW_GUESS" && gameState && (
-          <div className="flex-1 flex flex-col gap-3 max-w-xl mx-auto w-full">
+          <div className="flex-1 flex flex-col gap-3 max-w-xl mx-auto w-full relative z-10">
             <div className="bg-orbit-subsurface border-2 border-orbit-border p-2.5 rounded-boxy shadow-arcadeSm flex items-center justify-between">
               <div>
                 <span className="font-pixel text-[10px] text-orbit-muted">
@@ -537,7 +541,7 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
 
         {/* ════ GAME 3: CELEBRITY MYSTERY ════ */}
         {selectedGame === "CELEBRITY_GUESS" && gameState && (
-          <div className="flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full">
+          <div className="flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full relative z-10">
             <div className="bg-orbit-subsurface border-2 border-orbit-border rounded-boxy p-3 flex items-center justify-between shadow-arcadeSm">
               <div>
                 <span className="text-[10px] font-pixel text-orbit-muted uppercase">
@@ -659,7 +663,7 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
 
         {/* ════ GAME 4: ROCK PAPER SCISSORS DUEL ════ */}
         {selectedGame === "ROCK_PAPER_SCISSORS" && gameState && (
-          <div className="flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full">
+          <div className="flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full relative z-10">
             <div className="bg-orbit-subsurface border-2 border-orbit-border rounded-boxy p-3 flex items-center justify-between shadow-arcadeSm">
               <div>
                 <span className="text-[10px] font-pixel text-orbit-muted uppercase">
@@ -767,7 +771,7 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
             GAME 5: TABLE TENNIS / PONG
         ══════════════════════════════════════════════════════════ */}
         {selectedGame === "PONG" && gameState && (
-          <div className="flex-1 flex flex-col gap-3 max-w-2xl mx-auto w-full">
+          <div className="flex-1 flex flex-col gap-3 max-w-2xl mx-auto w-full relative z-10">
             {/* Arena Header */}
             <div className="bg-orbit-subsurface border-2 border-orbit-border p-2.5 rounded-boxy shadow-arcadeSm flex items-center justify-between">
               <div>

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@orbit/db";
 import { randomUUID } from "crypto";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request:Request, {params} : { params:Promise<{ roomId: string }> }) 
 {
     try 
