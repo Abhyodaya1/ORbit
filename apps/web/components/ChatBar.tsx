@@ -1,74 +1,118 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
+import { Socket } from "socket.io-client";
 import { Send } from "lucide-react";
-import { useState } from "react";
 
-interface Message {
- id: String;
- sender: 'You' | 'Partner';
- text: String;
- time: String;
+export interface ChatMessage {
+  id: string;
+  senderRole: "HOST" | "PEER";
+  senderName: string;
+  text: string;
+  createdAt: string;
 }
 
-export default function ChatBar() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      sender: "Partner",
-      text: "Ready to play?",
-      time: "12:00"
-    },
-    {
-      id: "2",
-      sender: "You",
-      text: "Let's do this! 🕹️",
-      time: "12:01"
-    }
-  ]);
-  const [inputText, setInputText] = useState("");
- 
-  const handleSend =(e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
+interface ChatBarProps {
+  socket: Socket | null;
+  roomCode: string;
+  token: string | null;
+  role: "HOST" | "PEER" | null;
+}
 
-    setMessages((prev)=> [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        sender: "You",
-        text: inputText,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      }
-    ])
+export default function ChatBar({ socket, roomCode, token, role }: ChatBarProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputText, setInputText] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 1. Listen for Live Socket Events
+  useEffect(() => {
+    if (!socket) return;
+
+    // Load past messages from PostgreSQL
+    socket.on("chat_history", (history: ChatMessage[]) => {
+      setMessages(history);
+    });
+
+    // Receive incoming message
+    socket.on("new_message", (msg: ChatMessage) => {
+      setMessages((prev) => [...prev, msg]);
+    });
+
+    return () => {
+      socket.off("chat_history");
+      socket.off("new_message");
+    };
+  }, [socket]);
+
+  // 2. Auto-scroll to the newest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // 3. Handle Send Message
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim() || !socket || !token) return;
+
+    socket.emit("send_message", {
+      roomCode,
+      token,
+      text: inputText,
+    });
+
     setInputText("");
   };
 
   return (
-    <div className=" flex flex-col bg-orbit-surface border-2 border-orbit-border rounded-boxy p-3 shadow-arcadeSm gap-2">
-      {/* Scrollable Chat Message History */}
+    <div className="flex flex-col bg-orbit-surface border-2 border-orbit-border rounded-boxy p-3 shadow-arcadeSm gap-2">
+      {/* Scrollable Message History */}
       <div className="max-h-24 md:max-h-28 overflow-y-auto flex flex-col gap-1.5 pr-1">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex items-baseline gap-2 text-xs ${
-              msg.sender === "You" ? "justify-end" : "justify-start"
-            }`}
-          >
-            <span className="font-pixel text-[10px] text-orbit-muted">
-              {msg.sender}:
-            </span>
-            <span
-              className={`px-2.5 py-1 rounded-boxy border border-orbit-border ${
-                msg.sender === "You"
-                  ? "bg-orbit-accent text-white"
-                  : "bg-orbit-subsurface text-orbit-text"
-              }`}
-            >
-              {msg.text}
-            </span>
-            <span className="text-[9px] text-orbit-muted">{msg.time}</span>
-          </div>
-        ))}
+        {messages.length === 0 ? (
+          <p className="text-[11px] text-orbit-muted italic py-1">
+            No messages yet. Say hi to your partner! 💬
+          </p>
+        ) : (
+          messages.map((msg) => {
+            const isMe = msg.senderRole === role;
+            const timeString = new Date(msg.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+
+            return (
+              <div
+                key={msg.id}
+                className={`flex items-baseline gap-2 text-xs ${
+                  isMe ? "justify-end" : "justify-start"
+                }`}
+              >
+                {!isMe && (
+                  <span className="font-pixel text-[9px] text-orbit-muted uppercase">
+                    PARTNER:
+                  </span>
+                )}
+                <span
+                  className={`px-2.5 py-1 rounded-boxy border font-medium ${
+                    isMe
+                      ? "bg-orbit-accent text-white border-orbit-border shadow-sm"
+                      : "bg-white text-orbit-text border-orbit-borderMuted shadow-sm"
+                  }`}
+                >
+                  {msg.text}
+                </span>
+                {isMe && (
+                  <span className="font-pixel text-[9px] text-orbit-muted uppercase">
+                    YOU
+                  </span>
+                )}
+                <span className="text-[9px] text-orbit-muted opacity-80">
+                  {timeString}
+                </span>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Chat Input Row */}
@@ -82,7 +126,8 @@ export default function ChatBar() {
         />
         <button
           type="submit"
-          className="bg-orbit-accent hover:bg-violet-600 text-white p-2 rounded-boxy border-2 border-orbit-border shadow-arcadeSm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+          disabled={!inputText.trim()}
+          className="bg-orbit-accent hover:bg-violet-600 disabled:opacity-50 text-white p-2 rounded-boxy border-2 border-orbit-border shadow-arcadeSm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
         >
           <Send className="w-3.5 h-3.5" />
         </button>

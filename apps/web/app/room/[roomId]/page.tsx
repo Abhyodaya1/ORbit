@@ -22,6 +22,9 @@ export default function RoomPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
+    // Floating reactions array
+  const [reactions, setReactions] = useState<{ id: string; emoji: string; left: number }[]>([]);
+
   // Live presence state from server
   const [presence, setPresence] = useState({
     hostConnected: false,
@@ -75,6 +78,17 @@ export default function RoomPage() {
           setPresence(updatedPresence);
         });
 
+                // Real-time floating emoji listener
+        socketInstance.on("emoji_reaction", ({ emoji, id }) => {
+          const randomLeft = Math.floor(Math.random() * 70) + 15; // 15% to 85% of screen width
+          setReactions((prev) => [...prev, { id, emoji, left: randomLeft }]);
+
+          // Auto garbage-collect after 2.2s animation finishes
+          setTimeout(() => {
+            setReactions((prev) => prev.filter((r) => r.id !== id));
+          }, 2200);
+        });
+
         return () => {
           socketInstance.disconnect();
         };
@@ -90,6 +104,10 @@ export default function RoomPage() {
   // Is our partner currently in the room?
   const isPeerConnected = role === "HOST" ? presence.peerConnected : presence.hostConnected;
 
+    const handleSendEmoji = (emoji: string) => {
+    if (!socket) return;
+    socket.emit("send_reaction", { roomCode: roomId, emoji });
+  };
   // 3. Initialize WebRTC Hook
   const {
     localStream,
@@ -239,9 +257,26 @@ export default function RoomPage() {
 
       {/* Bottom Full-Width Bar: Emoji Strip + Chat Bar */}
       <footer className="w-full flex flex-col gap-2 flex-shrink-0">
-        <EmojiRow />
-        <ChatBar />
+        <EmojiRow onSendEmoji={handleSendEmoji} />
+        <ChatBar
+          socket={socket}
+          roomCode={roomId}
+          token={token}
+          role={role}
+        />
       </footer>
+      {/* 🎈 Global Floating Emoji Reaction Overlay */}
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+        {reactions.map((r) => (
+          <div
+            key={r.id}
+            style={{ left: `${r.left}%`, bottom: "85px" }}
+            className="absolute text-4xl select-none animate-float-up"
+          >
+            {r.emoji}
+          </div>
+        ))}
+      </div>
     </main>
   );
 }

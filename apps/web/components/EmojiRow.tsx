@@ -2,14 +2,35 @@
 
 import { useState } from "react";
 
-const EMOJI_LIST = ["🔥", "🕹️", "👏", "😂", "💀", "🚀", "⚡", "❤️"];
+interface EmojiRowProps {
+  onSendEmoji?: (emoji: string) => void;
+}
 
-export default function EmojiRow() {
+
+const EMOJI_LIST = [
+    // Your original row
+    "🔥", "🕹️", "👏", "😂", "💀", "🚀", "⚡", "❤️", 
+    
+    // Hype & Gaming
+    "👑", "🏆", "🎯", "🎮", "👾", "💯", "💥", "🎉", 
+    
+    // Popular Streams & Reactions
+    "👀", "🙌", "🤯", "🥶", "🥳", "🥺", "🤔", "💡",
+    
+    // Fun & Hype Animals
+    "🐐", "🐒", "🐸", "🐱"
+];
+
+
+export default function EmojiRow({ onSendEmoji }: EmojiRowProps) {
   const [activeReaction, setActiveReaction] = useState<string | null>(null);
-
   const handleSendEmoji = (emoji: string) => {
     setActiveReaction(emoji);
-    // Auto-clear animation after 1 second
+    
+    // 🚀 Call the parent handler so the socket emits the reaction!
+    if (onSendEmoji) {
+      onSendEmoji(emoji);
+    }
     setTimeout(() => setActiveReaction(null), 1000);
   };
 

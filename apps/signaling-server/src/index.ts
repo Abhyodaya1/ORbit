@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { RoomManager } from './room';
+import { prisma } from '@orbit/db';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -51,6 +52,17 @@ io.on('connection', (socket) => {
         socket.emit('game_state_update', currentState);
       }
 
+     try {
+        const history = await prisma.message.findMany({
+          where: { room: { code: roomCode } },
+          orderBy: { createdAt: 'asc' },
+          take: 50,
+        });
+        socket.emit('chat_history', history);
+      } catch (e) {
+        console.error('Failed to fetch chat history:', e);
+      }
+
       io.to(roomCode).emit('presence_update', result.presence);
       socket.emit('joined_successfully', { role: result.role });
     } catch (err: any) {
@@ -70,6 +82,7 @@ io.on('connection', (socket) => {
   socket.on('webrtc_ice_candidate', ({ roomCode, candidate }) => {
     socket.to(roomCode).emit('webrtc_ice_candidate', { candidate });
   });
+
 
   // 3. Game: Start Game (includes 40 FPS Pong tick callback)
   socket.on('start_game', ({ roomCode, gameType }) => {
@@ -109,6 +122,47 @@ io.on('connection', (socket) => {
 
     io.to(room.host.socketId).emit('game_state_update', roomManager.getGameState(roomCode, room.host.token));
     io.to(room.peer.socketId).emit('game_state_update', roomManager.getGameState(roomCode, room.peer.token));
+  });
+
+  socket.on("send_reaction" , ({ roomCode, emoji }) => {
+     io.to(roomCode).emit('emoji_reaction', {
+      emoji,
+      id: `${Date.now()}_${Math.random()}`,
+    });
+  });
+
+  socket.on("send_message", async ({ roomCode, token, text }) =>{
+    if(!text || text.trim() === "") return;
+    const room = roomManager.getRoom(roomCode);
+    if(!room) return;
+
+     const isHost = room.host?.token === token;
+    const isPeer = room.peer?.token === token;
+    if (!isHost && !isPeer) return;
+    const senderRole: 'HOST' | 'PEER' = isHost ? 'HOST' : 'PEER';
+    const senderName = senderRole === 'HOST' ? 'Host' : 'Partner';
+  const messagePayload = {
+      id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      senderRole,
+      senderName,
+      text: text.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    // ⚡ 1. Instant WebSocket Relay (No waiting for database!)
+    io.to(roomCode).emit('new_message', messagePayload);
+    // 💾 2. Background Database Write (Non-blocking)
+    prisma.room.findUnique({ where: { code: roomCode } }).then((dbRoom) => {
+      if (dbRoom) {
+        prisma.message.create({
+          data: {
+            roomId: dbRoom.id,
+            senderRole,
+            senderName,
+            text: text.trim(),
+          },
+        }).catch((err) => console.error('Error saving message to DB:', err));
+      }
+    }).catch(console.error);
   });
 
   // 5. Canvas: Real-time brush strokes
