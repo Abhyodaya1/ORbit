@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { RoomManager } from './room';
 import { prisma } from '@orbit/db';
+import { startReaper } from "./reaper";
+import { RateLimiter } from './rateLimiter';
+import { preloadCelebrityImages } from './games/celebrityGuess';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -15,8 +18,57 @@ const PORT = process.env.PORT || 4000;
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+
+
+// ── 1. Production Healthcheck (Liveness & Readiness Probe) ──
+app.get('/health', async (req, res) => {
+  try {
+    // ⚡ Ultra-fast 0.5ms TCP & Auth Heartbeat ping against PostgreSQL
+    await prisma.$queryRaw`SELECT 1`;
+
+    res.status(200).json({
+      status: 'healthy',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: Math.floor(process.uptime()),
+    });
+  } catch (error: any) {
+    console.error('❌ [Healthcheck Failed] Database unreachable:', error.message);
+    res.status(503).json({
+      status: 'unhealthy',
+      database: 'disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// ── 2. Live Telemetry & System Metrics ──
+app.get('/api/metrics', (req, res) => {
+  const mem = process.memoryUsage();
+  const toMB = (bytes: number) => Math.round((bytes / 1024 / 1024) * 100) / 100;
+
+  res.status(200).json({
+    status: 'ok',
+    uptime: {
+      seconds: Math.floor(process.uptime()),
+      formatted: `${Math.floor(process.uptime() / 60)}m ${Math.floor(process.uptime() % 60)}s`,
+    },
+    rooms: {
+      activeCount: roomManager.getActiveRoomCount(),
+      activeCodes: roomManager.getActiveRoomCodes(),
+    },
+    network: {
+      connectedSockets: io.engine ? io.engine.clientsCount : 0,
+    },
+    memory: {
+      heapUsedMB: toMB(mem.heapUsed),
+      heapTotalMB: toMB(mem.heapTotal),
+      rssMB: toMB(mem.rss), // Total physical RAM allocated by OS
+      externalMB: toMB(mem.external),
+    },
+    timestamp: new Date().toISOString(),
+  });
 });
 
 const httpServer = createServer(app);
@@ -30,6 +82,30 @@ const io = new Server(httpServer, {
 });
 
 const roomManager = new RoomManager();
+
+// ── 3. Real-Time Room Presence Status Check ──
+app.get('/api/room/:code/status', (req, res) => {
+  const room = roomManager.getRoom(req.params.code);
+  if (!room) {
+    return res.status(200).json({
+      exists: false,
+      hostConnected: false,
+      peerConnected: false,
+    });
+  }
+
+  return res.status(200).json({
+    exists: true,
+    hostConnected: !!room.host?.connected,
+    peerConnected: !!room.peer?.connected,
+  });
+});
+// 📸 Pre-warm Wikipedia image cache in memory on boot (0ms game latency)
+preloadCelebrityImages();
+// 🧹 Start the background Database Reaper daemon (sweeps every 15 mins)
+startReaper(roomManager, 15);
+
+const rateLimiter = new RateLimiter();
 
 io.on('connection', (socket) => {
   console.log(`🔌 [Connected] Socket: ${socket.id}`);
@@ -125,6 +201,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on("send_reaction", ({ roomCode, emoji }) => {
+
+     if (rateLimiter.isRateLimited(`${socket.id}:reaction`, 8, 2000)) {
+      return; // Silently drop reaction spam
+    }
     io.to(roomCode).emit('emoji_reaction', {
       emoji,
       id: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -133,6 +213,12 @@ io.on('connection', (socket) => {
 
   socket.on("send_message", async ({ roomCode, token, text }) =>{
     if(!text || text.trim() === "") return;
+
+     if (rateLimiter.isRateLimited(`${socket.id}:chat`, 5, 2000)) {
+      socket.emit("error_alert", { message: "Slow down! You are sending messages too fast." });
+      return;
+    }
+
     const room = roomManager.getRoom(roomCode);
     if(!room) return;
 
@@ -176,6 +262,7 @@ io.on('connection', (socket) => {
 
   // 6. Disconnect handling
   socket.on('disconnect', () => {
+      rateLimiter.cleanup(socket.id);
     console.log(`❌ [Disconnected] Socket: ${socket.id}`);
     const result = roomManager.handleDisconnect(socket.id);
     if (result) {
@@ -187,3 +274,33 @@ io.on('connection', (socket) => {
 httpServer.listen(PORT, () => {
   console.log(`🚀 [Signaling Server] Running at http://localhost:${PORT}`);
 });
+
+// ── 7. Graceful Process Lifecycle (SIGINT / SIGTERM Clean Drain) ──
+async function handleGracefulShutdown(signal: string) {
+  console.log(`\n🛑 [${signal}] Received. Starting graceful shutdown sequence...`);
+
+  try {
+    // 1. Inform connected clients and close WebSockets cleanly (Code 1001)
+    io.emit("server_alert", { message: "Server is restarting. Reconnecting shortly..." });
+    io.disconnectSockets(true);
+
+    // 2. Stop accepting new HTTP requests
+    httpServer.close(() => {
+      console.log("🔒 [HTTP] Server stopped listening for new connections.");
+    });
+
+    // 3. Disconnect PostgreSQL connection pool safely
+    await prisma.$disconnect();
+    console.log("🔌 [Database] Prisma connection pool closed safely.");
+
+    console.log("👋 [Shutdown Complete] Exiting with Code 0.");
+    process.exit(0);
+  } catch (err: any) {
+    console.error("⚠️ [Shutdown Error]:", err.message);
+    process.exit(1);
+  }
+}
+
+// OS Process Signals
+process.on('SIGTERM', () => handleGracefulShutdown('SIGTERM')); // Cloud orchestrator shutdown (Railway, Render, AWS)
+process.on('SIGINT', () => handleGracefulShutdown('SIGINT'));   // Terminal Ctrl + C

@@ -5,6 +5,7 @@ import { Socket } from "socket.io-client";
 import { Gamepad2, RotateCcw, Trash2, Send, Check, ArrowUp, ArrowDown, HelpCircle } from "lucide-react";
 import ArcadeShootingStars from "./ArcadeShootingStars";
 
+
 interface GamePanelProps {
   socket: Socket | null;
   roomCode: string;
@@ -32,9 +33,7 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
   const [selectedGame, setSelectedGame] = useState("HIGHER_LOWER");
   const [gameState, setGameState] = useState<any>(null);
 
-  // 💡 THE PATTERN:
-const latestServerStateRef = useRef<PongState | null>(null);
-const localPaddleYRef = useRef<number>(205);
+
 
   // Inputs
   const [guessInput, setGuessInput] = useState("");
@@ -575,11 +574,13 @@ const localPaddleYRef = useRef<number>(205);
                 <div className="flex flex-col items-center gap-3 animate-in fade-in zoom-in duration-300">
                   <div className="relative w-44 h-44 rounded-boxy overflow-hidden border-2 border-orbit-border shadow-arcadeSm bg-orbit-bg">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={gameState.celebrity.imageUrl}
-                      alt={gameState.celebrity.name}
-                      className="w-full h-full object-cover object-top"
-                    />
+                      <img
+                        src={gameState.celebrity.imageUrl}
+                        alt={gameState.celebrity.name}
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
+                        className="w-full h-full object-cover object-top"
+                      />
                   </div>
                   <div>
                     <h3 className="font-pixel text-lg font-bold text-orbit-text">

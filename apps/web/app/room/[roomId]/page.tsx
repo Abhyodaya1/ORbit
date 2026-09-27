@@ -38,7 +38,10 @@ export default function RoomPage() {
 
     async function initRoom() {
       try {
-        const storedToken = localStorage.getItem(`orbit_token_${roomId}`);
+        // Read tab-isolated sessionStorage first so tabs on the same browser have independent identities
+        const storedToken =
+          sessionStorage.getItem(`orbit_token_${roomId}`) ||
+          localStorage.getItem(`orbit_token_${roomId}`);
 
         // Call our Join endpoint to verify room and claim slot
         const res = await fetch(`/room/${roomId}/join`, {
@@ -56,7 +59,9 @@ export default function RoomPage() {
           return;
         }
 
-        // Save our verified token in localStorage
+        // Save verified token in this tab's sessionStorage and localStorage
+        sessionStorage.setItem(`orbit_token_${roomId}`, data.token);
+        sessionStorage.setItem(`orbit_role_${roomId}`, data.role);
         localStorage.setItem(`orbit_token_${roomId}`, data.token);
         setToken(data.token);
         setRole(data.role);

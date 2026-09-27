@@ -28,6 +28,14 @@ interface ActiveRoom {
 export class RoomManager {
   private rooms = new Map<string, ActiveRoom>();
   private socketToUser = new Map<string, { roomCode: string; token: string }>();
+   
+getActiveRoomCodes(): string[] {
+    return Array.from(this.rooms.keys());
+  }
+
+   getActiveRoomCount(): number {
+    return this.rooms.size;
+  }
 
   async join(roomCode: string, token: string, socketId: string) {
     let dbRoom = await prisma.room.findUnique({
@@ -103,9 +111,22 @@ export class RoomManager {
       room.disconnectTimers.delete(token);
 
       if (!room.host && !room.peer) {
+        // 1. Halt any running game intervals to stop CPU leaks
         room.currentPongGame?.stop();
+        // 2. Remove the room from Node's in-memory Map
         this.rooms.delete(roomCode);
-        console.log(`🧹 [Cleanup] Pruned empty room: ${roomCode}`);
+        console.log(`🧹 [Cleanup] Pruned empty room from memory: ${roomCode}`);
+        // 3. Atomically cascade delete from PostgreSQL database (Safe non-blocking Promise)
+        prisma.room
+          .delete({
+            where: { code: roomCode },
+          })
+          .then(() => {
+            console.log(`🗑️ [Database] Cascade deleted room & chat from DB: ${roomCode}`);
+          })
+          .catch((err) => {
+            console.error(`⚠️ [Database] Failed to delete room ${roomCode} from DB:`, err.message);
+          });
       }
     }, 60000);
 
@@ -192,7 +213,7 @@ export class RoomManager {
     }
     // 5. Table Tennis (Pong)
     else if (room.selectedGame === "PONG" && room.currentPongGame) {
-      if (action.type === "PADDLE_MOVE" && typeof action.y === "number") {
+      if (action.type === "PADDLE_MOVE" && Number.isFinite(action.y) && typeof action.y === "number") {
         room.currentPongGame.updatePaddle(token, action.y);
         return { success: true };
       }
