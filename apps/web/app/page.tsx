@@ -14,7 +14,10 @@ export default function Home() {
   useEffect(() => {
    
     const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
-    const socket: Socket = io(`http://${host}:4000`);
+    const socket: Socket = io(`http://${host}:4000` , {
+      transports: ["websocket", "polling"],
+      reconnectionDelay: 500,
+    });
     
     socket.on("connect", () => {
       setIsConnected(true);

@@ -1,12 +1,15 @@
 import { prisma } from "@orbit/db";
 import { HigherLowerGame } from "./games/higherlower";
 import { DrawGuessGame } from "./games/drawGuess";
+import { CelebrityGuessGame } from "./games/celebrityGuess";
+import { RockPaperScissorsGame } from "./games/rps";
+import { PongGame, PongState } from "./games/pong";
 
 interface Participant {
-    token: string;
-    role: 'HOST' | 'PEER';
-    socketId: string;
-    connected: boolean;
+  token: string;
+  role: "HOST" | "PEER";
+  socketId: string;
+  connected: boolean;
 }
 
 interface ActiveRoom {
@@ -16,61 +19,54 @@ interface ActiveRoom {
   selectedGame: string;
   currentGame?: HigherLowerGame;
   currentDrawGame?: DrawGuessGame;
-  disconnectTimers: Map<string, NodeJS.Timeout>; // token -> timeout
+  currentCelebrityGame?: CelebrityGuessGame;
+  currentRPSGame?: RockPaperScissorsGame;
+  currentPongGame?: PongGame;
+  disconnectTimers: Map<string, NodeJS.Timeout>;
 }
 
 export class RoomManager {
+  private rooms = new Map<string, ActiveRoom>();
+  private socketToUser = new Map<string, { roomCode: string; token: string }>();
 
-    private rooms = new Map<string, ActiveRoom>();
-    private socketToUser = new Map<string, { roomCode: string; token: string }>();
+  async join(roomCode: string, token: string, socketId: string) {
+    let dbRoom = await prisma.room.findUnique({
+      where: { code: roomCode },
+    });
+    if (!dbRoom) throw new Error("Room not found");
 
-    async join(roomCode: string, token: string, socketId: string)
-    {
-        let dbRoom = await prisma.room.findUnique({
-            where: { code: roomCode },
-        });
-        if (!dbRoom) {
-            throw new Error("Room not found");
-        }
+    let role: "HOST" | "PEER";
+    if (dbRoom.hostToken === token) {
+      role = "HOST";
+    } else if (dbRoom.peerToken === token) {
+      role = "PEER";
+    } else {
+      throw new Error("Invalid token");
+    }
 
-        let role: 'HOST' | 'PEER';
-        if (dbRoom.hostToken === token) {
-            role = 'HOST';
-        } else if (dbRoom.peerToken === token) {
-            role = 'PEER';
-        } else {
-            throw new Error("Invalid token");
-        }
+    let room = this.rooms.get(roomCode);
+    if (!room) {
+      room = {
+        code: roomCode,
+        selectedGame: "HIGHER_LOWER",
+        disconnectTimers: new Map(),
+      };
+      this.rooms.set(roomCode, room);
+    }
 
-        let room = this.rooms.get(roomCode);
-        if (!room) {
-            room = {
-                code: roomCode,
-                selectedGame: "HIGHER_LOWER",
-                disconnectTimers: new Map(),
-            };
-            this.rooms.set(roomCode, room);
-        }
-
-         const existingTimer = room.disconnectTimers.get(token);
+    const existingTimer = room.disconnectTimers.get(token);
     if (existingTimer) {
       clearTimeout(existingTimer);
       room.disconnectTimers.delete(token);
       console.log(`⏱️ [Grace Period] Cancelled disconnect timer for ${role} in ${roomCode}`);
     }
 
-    const participant: Participant = {
-      token,
-      socketId,
-      role,
-      connected: true,
-    };
-    if (role === "HOST") {
-      room.host = participant;
-    } else {
-      room.peer = participant;
-    }
+    const participant: Participant = { token, role, socketId, connected: true };
+    if (role === "HOST") room.host = participant;
+    else room.peer = participant;
+
     this.socketToUser.set(socketId, { roomCode, token });
+
     return {
       success: true,
       role,
@@ -82,12 +78,15 @@ export class RoomManager {
   }
 
   handleDisconnect(socketId: string) {
-    const lookup = this.socketToUser.get(socketId);
-    if (!lookup) return null;
-    const { roomCode, token } = lookup;
+    const mapping = this.socketToUser.get(socketId);
+    if (!mapping) return null;
+
+    const { roomCode, token } = mapping;
     this.socketToUser.delete(socketId);
+
     const room = this.rooms.get(roomCode);
     if (!room) return null;
+
     let disconnectedRole: "HOST" | "PEER" | null = null;
     if (room.host?.token === token) {
       room.host.connected = false;
@@ -96,18 +95,20 @@ export class RoomManager {
       room.peer.connected = false;
       disconnectedRole = "PEER";
     }
-    // 60-Second Reconnection Grace Period!
+
     const timer = setTimeout(() => {
       console.log(`💀 [Grace Period Expired] Tearing down inactive slot for ${token}`);
       if (room.host?.token === token) delete room.host;
       if (room.peer?.token === token) delete room.peer;
       room.disconnectTimers.delete(token);
-      // If both left, prune room from RAM
+
       if (!room.host && !room.peer) {
+        room.currentPongGame?.stop();
         this.rooms.delete(roomCode);
         console.log(`🧹 [Cleanup] Pruned empty room: ${roomCode}`);
       }
-    }, 60000); // 60 seconds
+    }, 60000);
+
     room.disconnectTimers.set(token, timer);
     return {
       roomCode,
@@ -118,6 +119,7 @@ export class RoomManager {
       },
     };
   }
+
   getPeerSocketId(roomCode: string, myRole: "HOST" | "PEER"): string | null {
     const room = this.rooms.get(roomCode);
     if (!room) return null;
@@ -125,51 +127,104 @@ export class RoomManager {
     return target?.connected ? target.socketId : null;
   }
 
-  startGame(roomCode: string , gameType: string) {
-const room = this.rooms.get(roomCode);
+  startGame(roomCode: string, gameType: string, onPongTick?: (state: PongState) => void) {
+    const room = this.rooms.get(roomCode);
     if (!room || !room.host || !room.peer) {
-    return { error: "Both players must be in the room to start!" };
-  }
-
- room.selectedGame = gameType;
-  if (gameType === "HIGHER_LOWER") {
-    room.currentGame = new HigherLowerGame(room.host.token, room.peer.token);
-  }
-
-  if (gameType === "DRAW_GUESS") {
-    room.currentDrawGame = new DrawGuessGame(room.host.token, room.peer.token);
-  }
-  return { success: true, room };
-}
-
-handleGameAction(roomCode: string, token: string, action: { type: string; guess?: number | string }) {
-  const room = this.rooms.get(roomCode);
-  if (!room ) {
-    return { error: "No active game in this room!" };
-  }
-  if(room.selectedGame === "DRAW_GUESS" && room.currentDrawGame) {
-    if (action.type === "GUESS" && action.guess !== undefined) {
-      return room.currentDrawGame.handleGuess(token, String(action.guess));
+      return { error: "Both players must be in the room to start!" };
     }
-  } else if (room.selectedGame === "HIGHER_LOWER" && room.currentGame) {
-    if (action.type === "GUESS" && action.guess !== undefined) {
-      return room.currentGame.handleGuess(token, Number(action.guess));
-    }
-  }
-  return { error: "Unknown action" };
-}
-// Get masked state for a specific player
-getGameState(roomCode: string, token: string) {
-  const room = this.rooms.get(roomCode);
-  if (!room || !room.currentGame) return null;
 
-  if (room.selectedGame === "DRAW_GUESS" && room.currentDrawGame) {
-    return room.currentDrawGame.getStateForPlayer(token);
+    // Stop active Pong tick loop if switching games
+    if (room.currentPongGame) {
+      room.currentPongGame.stop();
+    }
+
+    room.selectedGame = gameType;
+    if (gameType === "HIGHER_LOWER") {
+      room.currentGame = new HigherLowerGame(room.host.token, room.peer.token);
+    } else if (gameType === "DRAW_GUESS") {
+      room.currentDrawGame = new DrawGuessGame(room.host.token, room.peer.token);
+    } else if (gameType === "CELEBRITY_GUESS") {
+      room.currentCelebrityGame = new CelebrityGuessGame(room.host.token, room.peer.token);
+    } else if (gameType === "ROCK_PAPER_SCISSORS") {
+      room.currentRPSGame = new RockPaperScissorsGame(room.host.token, room.peer.token);
+    } else if (gameType === "PONG") {
+      room.currentPongGame = new PongGame(room.host.token, room.peer.token, onPongTick);
+    }
+
+    return { success: true, room };
   }
-  return room.currentGame.getStateForPlayer(token);
-}
-// Get room details
-getRoom(roomCode: string) {
-  return this.rooms.get(roomCode);
-}
+
+  handleGameAction(roomCode: string, token: string, action: { type: string; guess?: number | string; choice?: any; y?: number }) {
+    const room = this.rooms.get(roomCode);
+    if (!room) return { error: "No active game in this room!" };
+
+    // 1. Draw & Guess
+    if (room.selectedGame === "DRAW_GUESS" && room.currentDrawGame) {
+      if (action.type === "GUESS" && action.guess !== undefined) {
+        return room.currentDrawGame.handleGuess(token, String(action.guess));
+      }
+    }
+    // 2. Higher or Lower
+    else if (room.selectedGame === "HIGHER_LOWER" && room.currentGame) {
+      if (action.type === "GUESS" && action.guess !== undefined) {
+        return room.currentGame.handleGuess(token, Number(action.guess));
+      }
+    }
+    // 3. Celebrity Mystery
+    else if (room.selectedGame === "CELEBRITY_GUESS" && room.currentCelebrityGame) {
+      if (action.type === "GUESS" && action.guess !== undefined) {
+        return room.currentCelebrityGame.handleGuess(token, String(action.guess));
+      }
+      if (action.type === "NEXT_ROUND") {
+        room.currentCelebrityGame.nextRound();
+        return { success: true };
+      }
+    }
+    // 4. Rock Paper Scissors
+    else if (room.selectedGame === "ROCK_PAPER_SCISSORS" && room.currentRPSGame) {
+      if (action.type === "CHOOSE" && action.choice) {
+        return room.currentRPSGame.handleChoice(token, action.choice);
+      }
+      if (action.type === "NEXT_ROUND") {
+        room.currentRPSGame.nextRound();
+        return { success: true };
+      }
+    }
+    // 5. Table Tennis (Pong)
+    else if (room.selectedGame === "PONG" && room.currentPongGame) {
+      if (action.type === "PADDLE_MOVE" && typeof action.y === "number") {
+        room.currentPongGame.updatePaddle(token, action.y);
+        return { success: true };
+      }
+    }
+
+    return { error: "Unknown action" };
   }
+
+  getGameState(roomCode: string, token: string) {
+    const room = this.rooms.get(roomCode);
+    if (!room) return null;
+
+    if (room.selectedGame === "DRAW_GUESS" && room.currentDrawGame) {
+      return room.currentDrawGame.getStateForPlayer(token);
+    }
+    if (room.selectedGame === "HIGHER_LOWER" && room.currentGame) {
+      return room.currentGame.getStateForPlayer(token);
+    }
+    if (room.selectedGame === "CELEBRITY_GUESS" && room.currentCelebrityGame) {
+      return room.currentCelebrityGame.getStateForPlayer(token);
+    }
+    if (room.selectedGame === "ROCK_PAPER_SCISSORS" && room.currentRPSGame) {
+      return room.currentRPSGame.getStateForPlayer(token);
+    }
+    if (room.selectedGame === "PONG" && room.currentPongGame) {
+      return room.currentPongGame.getState();
+    }
+
+    return null;
+  }
+
+  getRoom(roomCode: string) {
+    return this.rooms.get(roomCode);
+  }
+}

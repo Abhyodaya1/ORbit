@@ -25,7 +25,7 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
-  transports: ["websocket"],
+  transports: ["websocket", "polling"],
 });
 
 const roomManager = new RoomManager();
@@ -35,24 +35,30 @@ io.on('connection', (socket) => {
 
   // 1. Join Room
   socket.on('join_room', async ({ roomCode, token }) => {
-    const result = await roomManager.join(roomCode, token, socket.id);
+    try {
+      const result = await roomManager.join(roomCode, token, socket.id);
 
-    if (!result.success) {
-      socket.emit('join_error', { message: result.error });
-      return;
-    }
+      if (!result.success) {
+        socket.emit('join_error', { message: 'Could not join room' });
+        return;
+      }
 
-    socket.join(roomCode);
-    console.log(`👤 [Room Joined] ${result.role} in ${roomCode} (${socket.id})`);
+      socket.join(roomCode);
+      console.log(`👤 [Room Joined] ${result.role} in ${roomCode} (${socket.id})`);
+
       const currentState = roomManager.getGameState(roomCode, token);
-  if (currentState) {
-    socket.emit('game_state_update', currentState);
-  }
-    io.to(roomCode).emit('presence_update', result.presence);
-    socket.emit('joined_successfully', { role: result.role });
+      if (currentState) {
+        socket.emit('game_state_update', currentState);
+      }
+
+      io.to(roomCode).emit('presence_update', result.presence);
+      socket.emit('joined_successfully', { role: result.role });
+    } catch (err: any) {
+      socket.emit('join_error', { message: err.message });
+    }
   });
 
-  // 2. WebRTC Signaling Relays (using 'sdp' so it matches useWebRTC.ts!)
+  // 2. WebRTC Signaling Relays
   socket.on('webrtc_offer', ({ roomCode, sdp }) => {
     socket.to(roomCode).emit('webrtc_offer', { sdp });
   });
@@ -65,10 +71,14 @@ io.on('connection', (socket) => {
     socket.to(roomCode).emit('webrtc_ice_candidate', { candidate });
   });
 
-  // 3. Game: Start Game
+  // 3. Game: Start Game (includes 40 FPS Pong tick callback)
   socket.on('start_game', ({ roomCode, gameType }) => {
     console.log(`🎮 [Game Starting] ${gameType} in room ${roomCode}`);
-    const result = roomManager.startGame(roomCode, gameType);
+
+    const result = roomManager.startGame(roomCode, gameType, (pongTickState) => {
+      // 40Hz broadcast to both players for ultra-smooth Pong!
+      io.to(roomCode).emit('game_state_update', pongTickState);
+    });
 
     if (result.error) {
       socket.emit('game_error', { message: result.error });
@@ -78,23 +88,21 @@ io.on('connection', (socket) => {
     const room = roomManager.getRoom(roomCode);
     if (!room || !room.host || !room.peer) return;
 
-    // Send each player their masked state view
     io.to(room.host.socketId).emit('game_state_update', roomManager.getGameState(roomCode, room.host.token));
     io.to(room.peer.socketId).emit('game_state_update', roomManager.getGameState(roomCode, room.peer.token));
-
-    console.log("📡 Server sending state to Host socket:", room.host.socketId);
-console.log("📡 Server sending state to Peer socket:", room.peer.socketId);
   });
 
-  // 4. Game: Player Action (Guess)
+  // 4. Game: Player Action
   socket.on('game_action', ({ roomCode, token, action }) => {
-    console.log(`🎯 [Game Action] In ${roomCode}:`, action);
     const result = roomManager.handleGameAction(roomCode, token, action);
 
-    if (result.error) {
+    if (result && result.error) {
       socket.emit('game_error', { message: result.error });
       return;
     }
+
+    // High frequency paddle moves are handled by the 40Hz tick loop
+    if (action.type === "PADDLE_MOVE") return;
 
     const room = roomManager.getRoom(roomCode);
     if (!room || !room.host || !room.peer) return;
@@ -114,15 +122,14 @@ console.log("📡 Server sending state to Peer socket:", room.peer.socketId);
 
   // 6. Disconnect handling
   socket.on('disconnect', () => {
+    console.log(`❌ [Disconnected] Socket: ${socket.id}`);
     const result = roomManager.handleDisconnect(socket.id);
     if (result) {
-      console.log(`⚠️ [User Disconnected] ${result.disconnectedRole} left ${result.roomCode}`);
       io.to(result.roomCode).emit('presence_update', result.presence);
-      socket.to(result.roomCode).emit('peer_disconnected');
     }
   });
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Orbit Signaling Server running on port ${PORT}`);
+  console.log(`🚀 [Signaling Server] Running at http://localhost:${PORT}`);
 });
