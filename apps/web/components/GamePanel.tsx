@@ -32,6 +32,10 @@ export default function GamePanel({ socket, roomCode, token, role }: GamePanelPr
   const [selectedGame, setSelectedGame] = useState("HIGHER_LOWER");
   const [gameState, setGameState] = useState<any>(null);
 
+  // 💡 THE PATTERN:
+const latestServerStateRef = useRef<PongState | null>(null);
+const localPaddleYRef = useRef<number>(205);
+
   // Inputs
   const [guessInput, setGuessInput] = useState("");
   const [drawGuessInput, setDrawGuessInput] = useState("");
