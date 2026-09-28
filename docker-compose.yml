@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: orbit-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: orbit_user
+      POSTGRES_PASSWORD: orbit_production_secret_change_me
+      POSTGRES_DB: orbit_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - orbit-net
+
+  signaling:
+    build:
+      context: .
+      dockerfile: apps/signaling-server/Dockerfile
+    container_name: orbit-signaling
+    restart: always
+    environment:
+      PORT: 4000
+      DATABASE_URL: "postgresql://orbit_user:orbit_production_secret_change_me@postgres:5432/orbit_db?schema=public"
+    depends_on:
+      - postgres
+    networks:
+      - orbit-net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: orbit-web
+    restart: always
+    environment:
+      PORT: 3000
+      DATABASE_URL: "postgresql://orbit_user:orbit_production_secret_change_me@postgres:5432/orbit_db?schema=public"
+      NEXT_PUBLIC_SIGNALING_URL: ""
+    depends_on:
+      - postgres
+      - signaling
+    networks:
+      - orbit-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: orbit-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - signaling
+    networks:
+      - orbit-net
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  orbit-net:
+    driver: bridge

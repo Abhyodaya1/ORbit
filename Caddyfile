@@ -1,0 +1,20 @@
+orbit-arcade.duckdns.org {
+    # 1. Reverse proxy WebSockets & Signaling
+    handle /socket.io/* {
+        reverse_proxy signaling:4000
+    }
+    handle /health {
+        reverse_proxy signaling:4000
+    }
+    handle /api/metrics {
+        reverse_proxy signaling:4000
+    }
+    handle /api/room/* {
+        reverse_proxy signaling:4000
+    }
+
+    # 2. Reverse proxy Next.js frontend
+    handle {
+        reverse_proxy web:3000
+    }
+}
