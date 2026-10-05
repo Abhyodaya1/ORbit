@@ -33,7 +33,7 @@ flowchart TD
         Cache["In-Memory Thumbnail Pre-warm Cache"]
     end
 
-    Host <-->|Encrypted P2P Media Stream (UDP)| Peer
+    Host <-->|Direct P2P Encrypted Media Stream UDP| Peer
     Host -->|HTTPS / WSS| Caddy
     Peer -->|HTTPS / WSS| Caddy
     Caddy -->|Reverse Proxy /| Web
@@ -48,6 +48,20 @@ flowchart TD
     Wiki --> Cache
     Cache -->|0ms Lookup| State
 ```
+
+---
+
+## 📸 Production & Gameplay Interface Showcase
+
+| 🕹️ Neo-Brutalist Arcade Lobby | 🎭 Celebrity Mystery & 1:1 WebRTC Video |
+| :---: | :---: |
+| ![Landing Page Lobby](output/Screenshot%202026-10-05%20173728.png) | ![Celebrity Mystery Split Screen](output/Screenshot%202026-10-05%20173500.png) |
+| *Neo-Brutalist Lobby with live system telemetry, tactile spawn button & bento grid* | *Side-by-side WebRTC video feeds, Wikipedia pre-warmed portrait & secret role masking* |
+
+| 🎨 Draw & Guess with Floating Reactions | 💬 1:1 Live Chat & Tactile Reactions |
+| :---: | :---: |
+| ![Draw and Guess Canvas](output/Screenshot%202026-10-05%20173606.png) | ![1:1 Live Chat Bar](output/Screenshot%202026-10-05%20173657.png) |
+| *Real-time vector canvas sync with color swatches & floating animated emoji reactions* | *Neo-Brutalist message bubbles, timestamps & tactile reaction strip* |
 
 ---
 
