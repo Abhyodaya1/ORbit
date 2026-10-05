@@ -161,16 +161,27 @@ export default function RoomPage() {
   // If room is full or error occurred:
   if (errorMessage) {
     return (
-      <main className="h-screen w-full arcade-grid-bg flex items-center justify-center p-6">
-        <div className="bg-orbit-surface border-2 border-orbit-border rounded-boxy p-8 shadow-arcadeLg max-w-md w-full text-center">
-          <AlertCircle className="w-10 h-10 text-orbit-coral mx-auto mb-3" />
-          <h2 className="font-pixel text-lg font-bold text-orbit-text mb-2">
+      <main className="h-screen w-full arcade-grid-bg flex items-center justify-center p-6 selection:bg-orbit-accent selection:text-white">
+        <div className="relative bg-white border-[3px] border-orbit-border rounded-boxy p-8 shadow-arcadeLg max-w-md w-full text-center">
+          {/* Rivets */}
+          <span className="absolute top-2 left-2 text-[10px] font-mono text-orbit-muted font-bold select-none">+</span>
+          <span className="absolute top-2 right-2 text-[10px] font-mono text-orbit-muted font-bold select-none">+</span>
+          <span className="absolute bottom-2 left-2 text-[10px] font-mono text-orbit-muted font-bold select-none">+</span>
+          <span className="absolute bottom-2 right-2 text-[10px] font-mono text-orbit-muted font-bold select-none">+</span>
+
+          <div className="w-14 h-14 bg-orbit-coral/15 border-2 border-orbit-border rounded-boxy mx-auto mb-4 flex items-center justify-center shadow-arcadeSm">
+            <AlertCircle className="w-7 h-7 text-orbit-coral" />
+          </div>
+
+          <h2 className="font-pixel text-display-title font-bold text-orbit-text mb-2 pt-0.5 leading-tight">
             ACCESS DENIED
           </h2>
-          <p className="text-sm text-orbit-muted mb-6">{errorMessage}</p>
+          <p className="text-sm font-sans text-orbit-muted font-medium mb-6 leading-arcade-normal">
+            {errorMessage}
+          </p>
           <button
             onClick={() => router.push("/")}
-            className="w-full py-3 bg-orbit-accent hover:bg-violet-600 text-white font-pixel text-xs rounded-boxy border-2 border-orbit-border shadow-arcade"
+            className="w-full h-12 bg-orbit-accent hover:bg-violet-600 active:bg-violet-700 text-white font-pixel text-pixel-xs tracking-pixel-wide rounded-boxy border-[3px] border-orbit-border shadow-arcade hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-arcadeLg active:translate-x-1 active:translate-y-1 active:shadow-none active:scale-[0.99] transition-[transform,box-shadow,background-color] duration-150 flex items-center justify-center pt-0.5 leading-none cursor-pointer"
           >
             RETURN TO LOBBY
           </button>
@@ -180,7 +191,7 @@ export default function RoomPage() {
   }
 
   return (
-    <main className="min-h-screen lg:h-screen lg:max-h-screen w-full arcade-grid-bg flex flex-col p-2.5 sm:p-3 md:p-4 overflow-y-auto lg:overflow-hidden">
+    <main className="min-h-screen lg:h-screen lg:max-h-screen w-full arcade-grid-bg flex flex-col p-2.5 sm:p-3 md:p-4 overflow-y-auto lg:overflow-hidden selection:bg-orbit-accent selection:text-white">
       {/* ── Top Header Bar ── */}
       <header className="flex items-center justify-between pb-2.5 sm:pb-3 flex-shrink-0">
         <div className="flex items-center gap-2.5">
@@ -191,13 +202,13 @@ export default function RoomPage() {
                 e.preventDefault();
               }
             }}
-            className="p-1.5 bg-orbit-surface border-2 border-orbit-border rounded-boxy shadow-arcadeSm hover:bg-orbit-subsurface active:translate-x-[1px] active:translate-y-[1px] transition-all"
+            className="h-9 w-9 bg-white border-2 border-orbit-border rounded-boxy shadow-arcadeSm hover:bg-orbit-subsurface hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-arcade active:translate-x-0.5 active:translate-y-0.5 active:shadow-none active:scale-[0.96] transition-[transform,box-shadow,background-color] duration-150 flex items-center justify-center"
             title="Leave Room"
           >
-            <ArrowLeft className="w-4 h-4 text-orbit-text" />
+            <ArrowLeft className="w-4 h-4 text-orbit-text stroke-[2.5]" />
           </Link>
-          <div className="flex items-center gap-1.5">
-            <h1 className="font-pixel text-base font-bold text-orbit-text">
+          <div className="flex items-center gap-2">
+            <h1 className="font-pixel text-lg sm:text-xl font-bold tracking-pixel-wide text-orbit-text pt-0.5 leading-none">
               ORBIT
             </h1>
             <Sparkles className="w-4 h-4 text-orbit-accent animate-pulse" />
@@ -208,29 +219,35 @@ export default function RoomPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopyLink}
-            className="bg-white hover:bg-orbit-subsurface border-2 border-orbit-border px-2.5 sm:px-3 py-1 rounded-boxy shadow-arcadeSm flex items-center gap-1.5 active:translate-x-[1px] active:translate-y-[1px] transition-all"
+            className="h-9 px-3 bg-white hover:bg-orbit-subsurface border-2 border-orbit-border rounded-boxy shadow-arcadeSm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-arcade active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-[transform,box-shadow,background-color] duration-150 flex items-center gap-1.5 cursor-pointer"
             title="Click to copy full invite link"
           >
-            <span className="font-pixel text-[9px] sm:text-[10px] text-orbit-muted">ROOM:</span>
-            <span className="font-pixel text-[11px] sm:text-xs font-bold text-orbit-accent">
+            <span className="font-pixel text-pixel-tag text-orbit-muted tracking-pixel-wide pt-0.5 leading-none">
+              ROOM:
+            </span>
+            <span className="font-mono text-xs sm:text-sm font-bold text-orbit-accent tracking-pixel-snug leading-none">
               {roomId}
             </span>
           </button>
 
           <button
             onClick={handleCopyLink}
-            className="bg-orbit-accent hover:bg-violet-600 text-white border-2 border-orbit-border p-1.5 sm:px-2.5 rounded-boxy shadow-arcadeSm active:translate-x-[1px] active:translate-y-[1px] transition-all flex items-center gap-1.5 text-xs font-semibold"
+            className="h-9 px-3 sm:px-3.5 bg-orbit-accent hover:bg-violet-600 active:bg-violet-700 text-white border-2 border-orbit-border rounded-boxy shadow-arcadeSm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-arcade active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-[transform,box-shadow,background-color] duration-150 flex items-center gap-1.5 cursor-pointer pt-0.5"
             title="Copy Full Invite Link"
           >
             {isCopied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-orbit-mint" />
-                <span className="text-[10px] text-white font-pixel hidden sm:inline">COPIED!</span>
+                <Check className="w-3.5 h-3.5 text-orbit-mint stroke-[3]" />
+                <span className="font-pixel text-pixel-tag text-white tracking-pixel-wide uppercase leading-none hidden sm:inline">
+                  COPIED!
+                </span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" />
-                <span className="text-[10px] text-white font-pixel hidden sm:inline">INVITE</span>
+                <span className="font-pixel text-pixel-tag text-white tracking-pixel-wide uppercase leading-none hidden sm:inline">
+                  INVITE
+                </span>
               </>
             )}
           </button>

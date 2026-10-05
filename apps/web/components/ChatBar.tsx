@@ -64,7 +64,7 @@ export default function ChatBar({ socket, roomCode, token, role }: ChatBarProps)
   };
 
   return (
-    <div className="relative flex flex-col bg-gradient-to-br from-[#fff1f7] via-[#fce7f3] to-[#fed7ea] border-2 border-orbit-border rounded-boxy p-3 shadow-arcadeSm gap-2 overflow-hidden">
+    <div className="relative flex flex-col bg-gradient-to-br from-[#fff1f7] via-[#fce7f3] to-[#fed7ea] border-[3px] border-orbit-border rounded-boxy p-3 shadow-arcade gap-2 overflow-hidden">
       {/* Static Retro Pixel Dot Matrix Pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(#f472b6_1.2px,transparent_1.2px)] [background-size:18px_18px] opacity-30 pointer-events-none" />
 
@@ -74,9 +74,9 @@ export default function ChatBar({ socket, roomCode, token, role }: ChatBarProps)
       {/* Scrollable Message History */}
       <div className="relative z-10 max-h-24 md:max-h-28 overflow-y-auto flex flex-col gap-1.5 pr-1">
         {messages.length === 0 ? (
-          <div className="flex items-center gap-1.5 py-1 px-2.5 bg-white/75 backdrop-blur-sm rounded-boxy border border-orbit-borderMuted w-fit shadow-sm">
+          <div className="flex items-center gap-1.5 py-1 px-2.5 bg-white/80 backdrop-blur-sm rounded-boxy border border-orbit-borderMuted w-fit shadow-sm">
             <span className="text-xs">💬</span>
-            <p className="text-[11px] text-orbit-muted font-medium italic">
+            <p className="text-telemetry font-sans text-orbit-muted font-medium italic">
               No messages yet. Say hi to your partner!
             </p>
           </div>
@@ -96,25 +96,25 @@ export default function ChatBar({ socket, roomCode, token, role }: ChatBarProps)
                 }`}
               >
                 {!isMe && (
-                  <span className="font-pixel text-[9px] text-orbit-text font-bold uppercase drop-shadow-sm">
+                  <span className="font-pixel text-pixel-tag text-orbit-text font-bold uppercase drop-shadow-sm pt-0.5 leading-none">
                     PARTNER:
                   </span>
                 )}
                 <span
-                  className={`px-3 py-1 rounded-boxy border-2 font-medium max-w-[80%] break-words ${
+                  className={`px-3 py-1.5 rounded-boxy border-2 border-orbit-border font-sans font-medium text-xs max-w-[80%] break-words ${
                     isMe
-                      ? "bg-orbit-accent text-white border-orbit-border shadow-arcadeSm"
-                      : "bg-white text-orbit-text border-orbit-border shadow-arcadeSm"
+                      ? "bg-orbit-accent text-white shadow-arcadeSm"
+                      : "bg-white text-orbit-text shadow-arcadeSm"
                   }`}
                 >
                   {msg.text}
                 </span>
                 {isMe && (
-                  <span className="font-pixel text-[9px] text-orbit-text font-bold uppercase drop-shadow-sm">
+                  <span className="font-pixel text-pixel-tag text-orbit-text font-bold uppercase drop-shadow-sm pt-0.5 leading-none">
                     YOU
                   </span>
                 )}
-                <span className="text-[9px] text-orbit-muted opacity-80 font-mono">
+                <span className="text-telemetry text-orbit-muted font-mono leading-none">
                   {timeString}
                 </span>
               </div>
@@ -131,12 +131,13 @@ export default function ChatBar({ socket, roomCode, token, role }: ChatBarProps)
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder="Send a cozy message..."
-          className="flex-1 bg-white/95 border-2 border-orbit-border rounded-boxy px-3 py-1.5 text-xs text-orbit-text placeholder:text-orbit-muted focus:outline-none focus:ring-2 focus:ring-orbit-accent/40 font-medium transition-colors shadow-inner"
+          className="flex-1 h-10 bg-white border-2 border-orbit-border rounded-boxy px-3 text-xs font-sans text-orbit-text placeholder:text-orbit-muted/60 focus:outline-none focus:ring-2 focus:ring-orbit-accent font-medium transition-colors shadow-inner"
         />
         <button
           type="submit"
           disabled={!inputText.trim()}
-          className="bg-orbit-accent hover:bg-violet-600 disabled:opacity-50 text-white p-2 rounded-boxy border-2 border-orbit-border shadow-arcadeSm hover:translate-x-[1px] hover:translate-y-[1px] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex-shrink-0"
+          className="h-10 w-10 bg-orbit-accent hover:bg-violet-600 active:bg-violet-700 disabled:opacity-40 text-white rounded-boxy border-2 border-orbit-border shadow-arcadeSm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-arcade active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-[transform,box-shadow,background-color] duration-150 flex items-center justify-center flex-shrink-0 cursor-pointer"
+          title="Send message"
         >
           <Send className="w-3.5 h-3.5" />
         </button>
